@@ -1,5 +1,5 @@
 const DEFAULT_CONSTRAINTS = Object.freeze({
-  audio: true,
+  audio: true, 
   video: { width: 640, height: 480 }
 });
 

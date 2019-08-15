@@ -3,6 +3,8 @@ module.exports = class Peer {
     this.sessionId = sessionId;
     this.transports = [];
     this.producers = [];
+    this.consumers = [];
+    this.process = undefined;
   }
 
   addTransport (transport) {
@@ -19,5 +21,13 @@ module.exports = class Peer {
 
   getProducer (producerId) {
     return this.producers.find((producer => producer.id === producerId));
+  }
+
+  getProducersByKind (kind) {
+    return this.producers.filter((producer => producer.kind === kind));
+  }
+
+  getConsumersByKind (kind) {
+    return this.consumers.filter((consumer => consumer.kind === kind));
   }
 }

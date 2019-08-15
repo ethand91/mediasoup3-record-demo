@@ -3,12 +3,20 @@ const https = require('https');
 const WebSocket = require('ws');
 const uuidv1 = require('uuid/v1');
 
+const config = require('./config');
+const GStreamer = require('./gstreamer');
 const {
   initializeWorkers,
   createRouter,
   createTransport
 } = require('./mediasoup');
 const Peer = require('./peer');
+const {
+  getPort,
+  releasePort
+} = require('./port');
+const { createSdpString } = require('./sdp');
+const { convertStringToStream } = require('./utils');
 
 const HTTPS_OPTIONS = Object.freeze({
   cert: fs.readFileSync('./ssl/server.crt'),
@@ -70,6 +78,8 @@ const handleJsonMessage = async (jsonMessage) => {
       return await handleTransportConnectRequest(jsonMessage);
     case 'produce':
       return await handleProduceRequest(jsonMessage);
+    case 'start-record':
+      return await handleStartRecordRequest(jsonMessage);
     default: console.log('handleJsonMessage() unknown action [action:%s]', action);
   }
 };
@@ -138,6 +148,117 @@ const handleProduceRequest = async (jsonMessage) => {
     id: producer.id,
     kind: producer.kind
   };
+};
+
+const handleStartRecordRequest = async (jsonMessage) => {
+  console.log('handleStartRecordRequest() [data:%o]', jsonMessage);
+  const peer = peers.filter(peer => peer.sessionId === jsonMessage.sessionId)[0];
+
+  if (!peer) {
+    throw new Error(`Peer with id ${jsonMessage.sessionId} was not found`);
+  }
+
+  const transport = peer.transports[0];
+
+  if (!transport) {
+    throw new Error(`Transport with id ${jsonMessage.transportId} was not found`);
+  }
+
+  startRecord(peer);
+
+  console.log('ICE STATE:%s', transport.iceState);
+};
+
+const getProducerFfmpegRtpParameters = async (producer) => {
+  console.log('getProducerFfmpegParameters() [id:%s, kind:%s]', producer.id, producer.kind);
+  const rtpPort = await getPort();
+  const rtcpPort = await getPort();
+
+  const codecs = router.rtpCapabilities.codecs.filter(
+    codec => codec.mimeType === producer.rtpParameters.codecs[0].mimeType
+  );
+
+  return {
+    codecs,
+    rtpPort,
+    rtcpPort
+  }
+};
+
+const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) => {
+  console.log('publishProducerRtpStream()');
+  const rtpTransport = await createTransport('plain', router, config.plainRtpTransport);
+
+  await rtpTransport.connect({
+    ip: '127.0.0.1',
+    port: ffmpegRtpCapabilities[producer.kind].rtpPort,
+    rtcpPort: ffmpegRtpCapabilities[producer.kind].rtcpPort
+  });
+
+  ffmpegRtpCapabilities[producer.kind].localRtcpPort = rtpTransport.rtcpTuple.localPort;
+
+  peer.addTransport(rtpTransport);
+
+  let rtpCapabilities;
+
+  if (producer.kind === 'video') {
+    rtpCapabilities = {
+      codecs: [
+        {
+          kind: 'video',
+          mimeType: 'video/VP8',
+          preferredPayloadType: 101,
+          clockRate: 90000
+        }
+      ],
+      rtcpFeedback: []
+    };
+  } else {
+    rtpCapabilities = {
+      codecs: [
+        {
+          kind: 'audio',
+          mimeType: 'audio/opus',
+          preferredPayloadType: 100,
+          clockRate: 48000,
+          channels: 2
+        }
+      ],
+      rtcpFeedback: []
+    };
+  }
+
+  // Start the consumer paused
+  // Once the gstreamer process is ready to consume resume and send a keyframe
+  const rtpConsumer = await rtpTransport.consume({
+    producerId: producer.id,
+    //rtpCapabilities: ffmpegRtpCapabilities[producer.kind]
+    rtpCapabilities,
+    paused: producer.kind === 'video' 
+  });
+
+  peer.consumers.push(rtpConsumer);
+  console.log('consumer created [rtpPort:%d, rtcpPort:%d]', rtpTransport.tuple.localPort, rtpTransport.rtcpTuple.localPort);
+};
+
+const startRecord = async (peer) => {
+  const producers = peer.producers;
+  const ffmpegIp = config.webRtcTransport.listenIps[0].ip;
+
+  let ffmpegRtpCapabilities = {};
+  for (const producer of producers) {
+    ffmpegRtpCapabilities[producer.kind] = await getProducerFfmpegRtpParameters(producer); 
+    await publishProducerRtpStream(peer, producer, ffmpegRtpCapabilities);
+  }
+
+  ffmpegRtpCapabilities.fileName = Date.now().toString();
+  const process = new GStreamer(ffmpegRtpCapabilities);
+
+  for (const consumer of peer.getConsumersByKind('video')) {
+    console.log('resume consumer');
+    // GStreamer has been started so call resume on the consumer 
+    await consumer.resume();
+  }
 };
 
 /*

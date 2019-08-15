@@ -212,6 +212,11 @@ window.onload = () => {
 
   const startRecord = async () => {
     console.log('startRecord()');
+
+    socket.send(JSON.stringify({
+      action: 'start-record',
+      sessionId: peer.sessionId,
+    }));
   };
 
   socket.addEventListener('open', handleSocketOpen);

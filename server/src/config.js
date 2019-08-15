@@ -5,15 +5,15 @@ module.exports = Object.freeze({
   worker: {
     logLevel: 'debug',
     logTags: [
-      'info',
-      'ice',
-      'dtls',
+      //'info',
+      //'ice',
+      //'dtls',
       'rtp',
       'srtp',
       'rtcp',
-      'rtx',
-      'rbe',
-      'score'
+      //'rtx',
+      //'rbe',
+      //'score'
     ],
     rtcMinPort: 40000,
     rtcMaxPort: 49999
@@ -29,29 +29,8 @@ module.exports = Object.freeze({
       {
         kind: 'video',
         mimeType: 'video/VP8',
-        clockRate: 90000,
-        parameters: {
-          'x-google-start-bitrate': 1500
-        }
+        clockRate: 90000
       },
-      {
-        kind: 'video',
-        mimeType: 'video/VP9',
-        clockRate: 90000,
-        parameters: {
-          'x-google-start-bitrate': 1500
-        }
-      },
-      {
-        kind: 'video',
-        mimeType: 'video/h264',
-        clockRate: 90000,
-        parameters: {
-          'packetization-mode': 1,
-          'profile-level-id': '42e01f',
-          'level-asymmetry-allowed': 1
-        }
-      }
     ]
   },
   webRtcTransport: {
@@ -62,7 +41,8 @@ module.exports = Object.freeze({
     maxIncomingBitrate: 1500000
   },
   plainRtpTransport: {
-    listenIp: '192.168.11.4',
-    rtcpMux: true
+    listenIp: '127.0.0.1',
+    rtcpMux: false,
+    comedia: false 
   }
 });
