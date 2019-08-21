@@ -257,7 +257,9 @@ const startRecord = async (peer) => {
   for (const consumer of peer.getConsumersByKind('video')) {
     console.log('resume consumer');
     // GStreamer has been started so call resume on the consumer 
-    await consumer.resume();
+    setTimeout(async () => {
+      await consumer.resume();
+    }, 1000);
   }
 };
 

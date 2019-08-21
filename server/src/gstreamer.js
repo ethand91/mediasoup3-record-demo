@@ -1,11 +1,12 @@
 const child_process = require('child_process');
 const { EventEmitter } = require('events');
+const shell = require('shelljs');
 
 const RECORD_FILE_LOCATION_PATH = process.env.RECORD_FILE_LOCATION_PATH || './files';
 
 const GSTREAMER_DEBUG_LEVEL = process.env.GSTREAMER_DEBUG_LEVEL || 3;
 const GSTREAMER_COMMAND = 'gst-launch-1.0';
-const GSTREAMER_OPTIONS = '-em';
+const GSTREAMER_OPTIONS = '-v -e';
 
 const VIDEO_CAPS = 'application/x-rtp,media=(string)video,clock-rate=(int)90000,payload=(int)101,encoding-name=(string)VP8';
 const AUDIO_CAPS = 'application/x-rtp,media=(string)audio,clock-rate=(int)48000,payload=(int)100,encoding-name=(string)OPUS';
@@ -19,12 +20,18 @@ module.exports = class GStreamer {
   }
 
   _createProcess () {
-    // const exe = `GST_DEBUG=${GSTREAMER_DEBUG_LEVEL} ${GSTREAMER_COMMAND} ${GSTREAMER_OPTIONS}`;
-    const exe = `${GSTREAMER_COMMAND}`;
-    this._process = child_process.spawn(exe, this._commandArgs);
+    const exe = `GST_DEBUG=${GSTREAMER_DEBUG_LEVEL} GST_DEBUG_DUMP_DOT_DIR=./dump ${GSTREAMER_COMMAND} ${GSTREAMER_OPTIONS}`;
+    this._process = child_process.spawn(exe, this._commandArgs, {
+      detached: false,
+      shell: true
+    });
 
     if (this._process.stderr) {
       this._process.stderr.setEncoding('utf-8');
+    }
+
+    if (this._process.stdout) {
+      this._process.stdout.setEncoding('utf-8');
     }
 
     this._process.on('message', message =>
@@ -43,6 +50,10 @@ module.exports = class GStreamer {
     this._process.stderr.on('data', data =>
       console.log('gstreamer::process::stderr::data [data:%o]', data)
     );
+
+    this._process.stdout.on('data', data =>
+      console.log('gstreamer::process::stdout::data [data:%o]', data)
+    );
   }
 
   kill () {
@@ -52,9 +63,7 @@ module.exports = class GStreamer {
 
   get _commandArgs () {
     let commandArgs = [
-      'rtpbin name=rtpbin',
-      'latency=50',
-      'buffer-mode=2',
+      'rtpbin name=rtpbin latency=50 buffer-mode=2',
       '!'
     ];
 
@@ -68,16 +77,12 @@ module.exports = class GStreamer {
   }
 
   get _videoArgs () {
-    console.log('ARGS', this._rtpParameters);
     const { video } = this._rtpParameters;
 
     return [
-      'udpsrc',
-      `port=${video.rtpPort}`,
-      `caps=${VIDEO_CAPS}`,
+      `udpsrc port=${video.rtpPort} caps="${VIDEO_CAPS}"`,
       '!',
-      'rtpbin.recv_rtp_sink_0',
-      'rtpbin.',
+      'rtpbin.recv_rtp_sink_0 rtpbin.',
       '!',
       'queue',
       '!',
@@ -91,12 +96,9 @@ module.exports = class GStreamer {
     const { audio } = this._rtpParameters;
 
     return [
-      'udpsrc',
-      `port=${audio.rtpPort}`,
-      `caps=${AUDIO_CAPS}`,
+      `udpsrc port=${audio.rtpPort} caps="${AUDIO_CAPS}"`,
       '!',
-      'rtpbin.recv_rtp_sink_1',
-      'rtpbin.',
+      'rtpbin.recv_rtp_sink_1 rtpbin.',
       '!',
       'queue',
       '!',
@@ -114,36 +116,24 @@ module.exports = class GStreamer {
     const { video, audio } = this._rtpParameters;
 
     return [
-      'udpsrc',
-      `port=${video.rtcpPort}`,
+      `udpsrc port=${video.rtcpPort}`,
       '!',
-      'rtpbin.recv_rtcp_sink_0',
-      'rtpbin.send_rtcp_src_0',
+      'rtpbin.recv_rtcp_sink_0 rtpbin.send_rtcp_src_0',
       '!',
-      'udpsink',
-      `port=${video.localRtcpPort}`,
-      'sync=false',
-      'async=false',
-      'udpsrc',
-      `port=${audio.rtcpPort}`,
+      `udpsink port=${video.localRtcpPort} sync=false async=false`,
+      `udpsrc port=${audio.rtcpPort}`,
       '!',
-      'rtpbin.recv_rtcp_sink_1',
-      'rtpbin.send_rtcp_src_1',
+      'rtpbin.recv_rtcp_sink_1 rtpbin.send_rtcp_src_1',
       '!',
-      'udpsink',
-      `port=${audio.localRtcpPort}`,
-      'sync=false',
-      'async=false'
+      `udpsink port=${audio.localRtcpPort} sync=false async=false`
     ];
   }
 
   get _sinkArgs () {
     return [
-      'webmmux',
-      'name=mux',
+      'webmmux name=mux',
       '!',
-      'filesink',
-      `location=${RECORD_FILE_LOCATION_PATH}/${this._rtpParameters.fileName}`
+      `filesink location=${RECORD_FILE_LOCATION_PATH}/${this._rtpParameters.fileName}.webm`
     ];
   }
 }
