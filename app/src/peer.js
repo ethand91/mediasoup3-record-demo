@@ -1,3 +1,4 @@
+// Class to hold peers info
 module.exports = class Peer {
   constructor (sessionId, device) {
     this.sessionId = sessionId;

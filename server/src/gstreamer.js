@@ -1,3 +1,5 @@
+// Class to handle child process used for running GStreamer
+
 const child_process = require('child_process');
 const { EventEmitter } = require('events');
 const shell = require('shelljs');
@@ -20,7 +22,9 @@ module.exports = class GStreamer {
   }
 
   _createProcess () {
-    const exe = `GST_DEBUG=${GSTREAMER_DEBUG_LEVEL} GST_DEBUG_DUMP_DOT_DIR=./dump ${GSTREAMER_COMMAND} ${GSTREAMER_OPTIONS}`;
+    // Use the commented out exe to create gstreamer dot file
+    // const exe = `GST_DEBUG=${GSTREAMER_DEBUG_LEVEL} GST_DEBUG_DUMP_DOT_DIR=./dump ${GSTREAMER_COMMAND} ${GSTREAMER_OPTIONS}`;
+    const exe = `GST_DEBUG=${GSTREAMER_DEBUG_LEVEL} ${GSTREAMER_COMMAND} ${GSTREAMER_OPTIONS}`;
     this._process = child_process.spawn(exe, this._commandArgs, {
       detached: false,
       shell: true
@@ -61,6 +65,7 @@ module.exports = class GStreamer {
     this._process.kill('SIGINT');
   }
 
+  // Build the gstreamer child process args
   get _commandArgs () {
     let commandArgs = [
       'rtpbin name=rtpbin latency=50 buffer-mode=2',
@@ -72,7 +77,6 @@ module.exports = class GStreamer {
     commandArgs = commandArgs.concat(this._sinkArgs);
     commandArgs = commandArgs.concat(this._rtcpArgs);
 
-    console.log('ARGS', commandArgs);
     return commandArgs;
   }
 
@@ -80,7 +84,7 @@ module.exports = class GStreamer {
     const { video } = this._rtpParameters;
 
     return [
-      `udpsrc port=${video.rtpPort} caps="${VIDEO_CAPS}"`,
+      `udpsrc port=${video.remoteRtpPort} caps="${VIDEO_CAPS}"`,
       '!',
       'rtpbin.recv_rtp_sink_0 rtpbin.',
       '!',
@@ -96,7 +100,7 @@ module.exports = class GStreamer {
     const { audio } = this._rtpParameters;
 
     return [
-      `udpsrc port=${audio.rtpPort} caps="${AUDIO_CAPS}"`,
+      `udpsrc port=${audio.remoteRtpPort} caps="${AUDIO_CAPS}"`,
       '!',
       'rtpbin.recv_rtp_sink_1 rtpbin.',
       '!',
@@ -116,12 +120,12 @@ module.exports = class GStreamer {
     const { video, audio } = this._rtpParameters;
 
     return [
-      `udpsrc port=${video.rtcpPort}`,
+      `udpsrc port=${video.remoteRtcpPort}`,
       '!',
       'rtpbin.recv_rtcp_sink_0 rtpbin.send_rtcp_src_0',
       '!',
       `udpsink port=${video.localRtcpPort} sync=false async=false`,
-      `udpsrc port=${audio.rtcpPort}`,
+      `udpsrc port=${audio.remoteRtcpPort}`,
       '!',
       'rtpbin.recv_rtcp_sink_1 rtpbin.send_rtcp_src_1',
       '!',

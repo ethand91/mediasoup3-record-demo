@@ -3,11 +3,11 @@ const mediasoup = require('mediasoup');
 const config = require('./config');
 
 console.log('mediasoup loaded [version:%s]', mediasoup.version);
-console.log('config', config);
 
 let workers = [];
 let nextWorkerIndex = 0;
 
+// Start the mediasoup workers
 module.exports.initializeWorkers = async () => {
   const { logLevel, logTags, rtcMinPort, rtcMaxPort } = config.worker;
 
@@ -32,9 +32,7 @@ module.exports.createRouter = async () => {
 
   console.log('createRouter() creating new router [worker.pid:%d]', worker.pid);
 
-  const router = await worker.createRouter({ mediaCodecs: config.router.mediaCodecs });
-
-  return router;
+  return await worker.createRouter({ mediaCodecs: config.router.mediaCodecs });
 };
 
 module.exports.createTransport = async (transportType, router, options) => {

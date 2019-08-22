@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",
+    "dev": "webpack-dev-server --https",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

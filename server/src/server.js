@@ -15,8 +15,6 @@ const {
   getPort,
   releasePort
 } = require('./port');
-const { createSdpString } = require('./sdp');
-const { convertStringToStream } = require('./utils');
 
 const HTTPS_OPTIONS = Object.freeze({
   cert: fs.readFileSync('./ssl/server.crt'),
@@ -25,26 +23,25 @@ const HTTPS_OPTIONS = Object.freeze({
 
 const httpsServer = https.createServer(HTTPS_OPTIONS);
 const wss = new WebSocket.Server({ server: httpsServer });
-const peers = [];
-
-const heartbeat = socket => socket.isAlive = true;
+const peers = new Map();
 
 let router;
 
 wss.on('connection', async (socket, request) => {
   console.log('new socket connection [ip%s]', request.headers['x-forwared-for'] || request.headers.origin);
 
-  socket.isAlive = true;
-
   try {
-    const peer = new Peer(uuidv1());
-    peers.push(peer);
+    const sessionId = uuidv1();
+    socket.sessionId = sessionId;
+    const peer = new Peer(sessionId);
+    peers.set(sessionId, peer);
 
     const message = JSON.stringify({
       action: 'router-rtp-capabilities',
       routerRtpCapabilities: router.rtpCapabilities,
       sessionId: peer.sessionId
     });
+
     socket.send(message);
   } catch (error) {
     console.error('Failed to create new peer [error:%o]', error);
@@ -58,6 +55,7 @@ wss.on('connection', async (socket, request) => {
       console.log('socket::message [jsonMessage:%o]', jsonMessage);
 
       const response = await handleJsonMessage(jsonMessage);
+
       if (response) {
         console.log('sending response %o', response);
         socket.send(JSON.stringify(response));
@@ -65,6 +63,11 @@ wss.on('connection', async (socket, request) => {
     } catch (error) {
       console.error('Failed to handle socket message [error:%o]', error);
     }
+  });
+
+  socket.once('close', () => {
+    console.log('socket::close [sessionId:%s]', socket.sessionId);
+    
   });
 });
 
@@ -80,6 +83,8 @@ const handleJsonMessage = async (jsonMessage) => {
       return await handleProduceRequest(jsonMessage);
     case 'start-record':
       return await handleStartRecordRequest(jsonMessage);
+    case 'stop-record':
+      return await handleStopRecordRequest(jsonMessage);
     default: console.log('handleJsonMessage() unknown action [action:%s]', action);
   }
 };
@@ -87,7 +92,7 @@ const handleJsonMessage = async (jsonMessage) => {
 const handleCreateTransportRequest = async (jsonMessage) => {
   const transport = await createTransport('webRtc', router);
 
-  const peer = peers.filter(peer => peer.sessionId === jsonMessage.sessionId)[0];
+  const peer = peers.get(jsonMessage.sessionId);
   peer.addTransport(transport);
 
   return {
@@ -100,7 +105,7 @@ const handleCreateTransportRequest = async (jsonMessage) => {
 };
 
 const handleTransportConnectRequest = async (jsonMessage) => {
-  const peer = peers.filter(peer => peer.sessionId === jsonMessage.sessionId)[0];
+  const peer = peers.get(jsonMessage.sessionId);
 
   if (!peer) {
     throw new Error(`Peer with id ${jsonMessage.sessionId} was not found`);
@@ -122,7 +127,7 @@ const handleTransportConnectRequest = async (jsonMessage) => {
 const handleProduceRequest = async (jsonMessage) => {
   console.log('handleProduceRequest [data:%o]', jsonMessage);
 
-  const peer = peers.filter(peer => peer.sessionId === jsonMessage.sessionId)[0];
+  const peer = peers.get(jsonMessage.sessionId);
 
   if (!peer) {
     throw new Error(`Peer with id ${jsonMessage.sessionId} was not found`);
@@ -152,130 +157,106 @@ const handleProduceRequest = async (jsonMessage) => {
 
 const handleStartRecordRequest = async (jsonMessage) => {
   console.log('handleStartRecordRequest() [data:%o]', jsonMessage);
-  const peer = peers.filter(peer => peer.sessionId === jsonMessage.sessionId)[0];
+  const peer = peers.get(jsonMessage.sessionId);
 
   if (!peer) {
     throw new Error(`Peer with id ${jsonMessage.sessionId} was not found`);
   }
 
-  const transport = peer.transports[0];
-
-  if (!transport) {
-    throw new Error(`Transport with id ${jsonMessage.transportId} was not found`);
-  }
-
   startRecord(peer);
-
-  console.log('ICE STATE:%s', transport.iceState);
 };
 
-const getProducerFfmpegRtpParameters = async (producer) => {
-  console.log('getProducerFfmpegParameters() [id:%s, kind:%s]', producer.id, producer.kind);
-  const rtpPort = await getPort();
-  const rtcpPort = await getPort();
+const handleStopRecordRequest = async (jsonMessage) => {
+  console.log('handleStopRecordRequest() [data:%o]', jsonMessage);
+  const peer = peers.get(jsonMessage.sessionId);
 
-  const codecs = router.rtpCapabilities.codecs.filter(
-    codec => codec.mimeType === producer.rtpParameters.codecs[0].mimeType
-  );
+  if (!peer) {
+    throw new Error(`Peer with id ${jsonMessage.sessionId} was not found`);
+  }
 
-  return {
-    codecs,
-    rtpPort,
-    rtcpPort
+  if (!peer.process) {
+    throw new Error(`Peer with id ${jsonMessage.sessionId} is not recording`);
+  }
+
+  peer.process.kill();
+  peer.process = undefined;
+
+  // Release ports from port set
+  for (const remotePort of peer.remotePorts) {
+    releasePort(remotePort);
   }
 };
 
 const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) => {
   console.log('publishProducerRtpStream()');
+  const remoteRtpPort = await getPort();
+  const remoteRtcpPort = await getPort();
+  peer.remotePorts.push(remoteRtpPort);
+  peer.remotePorts.push(remoteRtcpPort);
+
+  // Create the mediasoup RTP Transport used to send media to the GStreamer process
   const rtpTransport = await createTransport('plain', router, config.plainRtpTransport);
 
+  // Connect the mediasoup RTP transport to the ports used by GStreamer
   await rtpTransport.connect({
     ip: '127.0.0.1',
-    port: ffmpegRtpCapabilities[producer.kind].rtpPort,
-    rtcpPort: ffmpegRtpCapabilities[producer.kind].rtcpPort
+    port: remoteRtpPort,
+    rtcpPort: remoteRtcpPort
   });
-
-  ffmpegRtpCapabilities[producer.kind].localRtcpPort = rtpTransport.rtcpTuple.localPort;
 
   peer.addTransport(rtpTransport);
 
-  let rtpCapabilities;
+  const codecs = [];
+  // Codec passed to the RTP Consumer must match the codec in the Mediasoup router rtpCapabilities
+  const routerCodec = router.rtpCapabilities.codecs.find(
+    codec => codec.kind === producer.kind 
+  );
+  codecs.push(routerCodec);
 
-  if (producer.kind === 'video') {
-    rtpCapabilities = {
-      codecs: [
-        {
-          kind: 'video',
-          mimeType: 'video/VP8',
-          preferredPayloadType: 101,
-          clockRate: 90000
-        }
-      ],
-      rtcpFeedback: []
-    };
-  } else {
-    rtpCapabilities = {
-      codecs: [
-        {
-          kind: 'audio',
-          mimeType: 'audio/opus',
-          preferredPayloadType: 100,
-          clockRate: 48000,
-          channels: 2
-        }
-      ],
-      rtcpFeedback: []
-    };
-  }
+  const rtpCapabilities = {
+    codecs,
+    rtcpFeedback: []
+  };
 
   // Start the consumer paused
   // Once the gstreamer process is ready to consume resume and send a keyframe
   const rtpConsumer = await rtpTransport.consume({
     producerId: producer.id,
-    //rtpCapabilities: ffmpegRtpCapabilities[producer.kind]
     rtpCapabilities,
     paused: producer.kind === 'video' 
   });
 
   peer.consumers.push(rtpConsumer);
-  console.log('consumer created [rtpPort:%d, rtcpPort:%d]', rtpTransport.tuple.localPort, rtpTransport.rtcpTuple.localPort);
+
+  return {
+    remoteRtpPort,
+    remoteRtcpPort,
+    localRtcpPort: rtpTransport.rtcpTuple.localPort,
+    rtpCapabilities
+  };
 };
 
 const startRecord = async (peer) => {
-  const producers = peer.producers;
-  const ffmpegIp = config.webRtcTransport.listenIps[0].ip;
+  let gstreamerInfo = {};
 
-  let ffmpegRtpCapabilities = {};
-  for (const producer of producers) {
-    ffmpegRtpCapabilities[producer.kind] = await getProducerFfmpegRtpParameters(producer); 
-    await publishProducerRtpStream(peer, producer, ffmpegRtpCapabilities);
+  for (const producer of peer.producers) {
+    gstreamerInfo[producer.kind] = await publishProducerRtpStream(peer, producer);
   }
 
-  ffmpegRtpCapabilities.fileName = Date.now().toString();
-  const process = new GStreamer(ffmpegRtpCapabilities);
+  gstreamerInfo.fileName = Date.now().toString();
+
+  console.log(gstreamerInfo);
+
+  peer.process = new GStreamer(gstreamerInfo);
 
   for (const consumer of peer.getConsumersByKind('video')) {
-    console.log('resume consumer');
-    // GStreamer has been started so call resume on the consumer 
+    // Sometimes the consumer gets resumed before the GStreamer process has fully started
+    // so wait a couple of seconds
     setTimeout(async () => {
       await consumer.resume();
-    }, 1000);
+    }, 2000);
   }
 };
-
-/*
-setInterval(() => {
-  for (const socket of wss.clients) {
-    if (!Boolean(socket.isAlive)) {
-      console.log('disconnect socket due to ping/pong timeout');
-      return socket.terminate();
-    }
-
-    socket.isAlive = false;
-    socket.ping(() => {});
-  }
-}, 3000);
-*/
 
 (async () => {
   try {

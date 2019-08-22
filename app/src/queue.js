@@ -1,3 +1,4 @@
+// Queue to handle async requests/responses
 module.exports = class SocketQueue {
   constructor () {
     this.queue = new Map();

@@ -1,3 +1,5 @@
+// Config file for mediasoup elements
+
 const os = require('os');
 
 module.exports = Object.freeze({
@@ -5,15 +7,9 @@ module.exports = Object.freeze({
   worker: {
     logLevel: 'debug',
     logTags: [
-      //'info',
-      //'ice',
-      //'dtls',
       'rtp',
       'srtp',
       'rtcp',
-      //'rtx',
-      //'rbe',
-      //'score'
     ],
     rtcMinPort: 40000,
     rtcMaxPort: 49999
@@ -34,7 +30,7 @@ module.exports = Object.freeze({
     ]
   },
   webRtcTransport: {
-    listenIps: [ { ip: '192.168.11.4', announcedIp: undefined } ],
+    listenIps: [ { ip: '192.168.60.99', announcedIp: undefined } ],
     enableUdp: true,
     enableTcp: true,
     preferUdp: true,

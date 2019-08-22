@@ -1,3 +1,5 @@
+// Class to hold peer data
+
 module.exports = class Peer {
   constructor (sessionId) {
     this.sessionId = sessionId;
@@ -5,6 +7,7 @@ module.exports = class Peer {
     this.producers = [];
     this.consumers = [];
     this.process = undefined;
+    this.remotePorts = [];
   }
 
   addTransport (transport) {
