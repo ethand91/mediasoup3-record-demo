@@ -44,6 +44,7 @@ cd app && npm i
 
 ```bash
 # Change the listen IP in src/config.js to your local ip (config -> webRtcTransport -> listenIps)
+# Create [files] directory in order for the files to be saved
 cd server && node src/server
 ```
 
