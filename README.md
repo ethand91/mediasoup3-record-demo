@@ -78,3 +78,4 @@ https://localhost:8080
 - FFmpeg Sample?
 - Multiple formats (mp4/avi etc)
 - Multiple Codec support (VP9/VP8/H264)
+- Option to play the recorded file using RTP Producer after recording    
