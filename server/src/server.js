@@ -68,6 +68,12 @@ wss.on('connection', async (socket, request) => {
   socket.once('close', () => {
     console.log('socket::close [sessionId:%s]', socket.sessionId);
     
+    const peer = peers.get(socket.sessionId);
+
+    if (peer && peer.process) {
+      peer.process.kill();
+      peer.process = undefined;
+    }
   });
 });
 
