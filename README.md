@@ -43,6 +43,7 @@ cd app && npm i
 ### Start the server
 
 ```bash
+# Change the listen IP in src/config.js to your local ip (config -> webRtcTransport -> listenIps)
 cd server && node src/server
 ```
 
