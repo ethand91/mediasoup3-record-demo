@@ -12,6 +12,9 @@ File names are simply the current timestamp
 
 This sample currently only uses VP8/opus and the output file is .webm
 
+For those who prefer using FFmpeg please check this repository's ffmpeg branch.
+
+
 ---
 
 ## How to use
