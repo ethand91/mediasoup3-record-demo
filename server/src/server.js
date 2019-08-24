@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const uuidv1 = require('uuid/v1');
 
 const config = require('./config');
+const FFmpeg = require('./ffmpeg');
 const GStreamer = require('./gstreamer');
 const {
   initializeWorkers,
@@ -196,9 +197,9 @@ const handleStopRecordRequest = async (jsonMessage) => {
 const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) => {
   console.log('publishProducerRtpStream()');
   const remoteRtpPort = await getPort();
-  const remoteRtcpPort = await getPort();
+  // const remoteRtcpPort = await getPort();
   peer.remotePorts.push(remoteRtpPort);
-  peer.remotePorts.push(remoteRtcpPort);
+  // peer.remotePorts.push(remoteRtcpPort);
 
   // Create the mediasoup RTP Transport used to send media to the GStreamer process
   const rtpTransport = await createTransport('plain', router, config.plainRtpTransport);
@@ -207,7 +208,7 @@ const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) =
   await rtpTransport.connect({
     ip: '127.0.0.1',
     port: remoteRtpPort,
-    rtcpPort: remoteRtcpPort
+    // rtcpPort: remoteRtcpPort
   });
 
   peer.addTransport(rtpTransport);
@@ -229,15 +230,15 @@ const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) =
   const rtpConsumer = await rtpTransport.consume({
     producerId: producer.id,
     rtpCapabilities,
-    paused: producer.kind === 'video' 
+    paused: true 
   });
 
   peer.consumers.push(rtpConsumer);
 
   return {
     remoteRtpPort,
-    remoteRtcpPort,
-    localRtcpPort: rtpTransport.rtcpTuple.localPort,
+    // remoteRtcpPort,
+    // localRtcpPort: rtpTransport.rtcpTuple.localPort,
     rtpCapabilities
   };
 };
@@ -253,15 +254,16 @@ const startRecord = async (peer) => {
 
   console.log(gstreamerInfo);
 
-  peer.process = new GStreamer(gstreamerInfo);
+  // peer.process = new GStreamer(gstreamerInfo);
+  peer.process = new FFmpeg(gstreamerInfo);
 
-  for (const consumer of peer.getConsumersByKind('video')) {
-    // Sometimes the consumer gets resumed before the GStreamer process has fully started
-    // so wait a couple of seconds
-    setTimeout(async () => {
+  setTimeout(async () => {
+    for (const consumer of peer.consumers) {
+      // Sometimes the consumer gets resumed before the GStreamer process has fully started
+      // so wait a couple of seconds
       await consumer.resume();
-    }, 2000);
-  }
+    }
+  }, 1000);
 };
 
 (async () => {

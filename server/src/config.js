@@ -38,7 +38,7 @@ module.exports = Object.freeze({
   },
   plainRtpTransport: {
     listenIp: '127.0.0.1',
-    rtcpMux: false,
+    rtcpMux: true,
     comedia: false 
   }
 });
