@@ -42,7 +42,11 @@ cd app && npm i
 
 ```bash
 # Change the listen IP in src/config.js to your local ip (config -> webRtcTransport -> listenIps)
+# The server uses FFmpeg as default
 cd server && node src/server
+
+# To use GStreamer
+PROCESS_NAME="GStreamer" node src/server
 ```
 
 ### Build and start the application
@@ -67,7 +71,8 @@ https://localhost:8080
 | Argument | Type | Explanation |
 | -------- | :--: | :---------: |
 | RECORD_FILE_LOCATION_PATH | string | Path to store the recorded files (user running node MUST have read/write permission) |
-| GSTREAMER_DEBUG_LEVEL | number | GStreamer Debug Level |
+| GSTREAMER_DEBUG_LEVEL | number | GStreamer Debug Level (GStreamer only) |
+| PROCESS_NAME | string | The command to use (GStreamer/FFmpeg) (case sensitive) default is FFmpeg |
 
 ---
 
