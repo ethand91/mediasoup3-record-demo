@@ -17,6 +17,8 @@ const {
   releasePort
 } = require('./port');
 
+const PROCESS_NAME = process.env.PROCESS_NAME || 'FFmpeg';
+const SERVER_PORT = process.env.SERVER_PORT || 3000;
 const HTTPS_OPTIONS = Object.freeze({
   cert: fs.readFileSync('./ssl/server.crt'),
   key: fs.readFileSync('./ssl/server.key')
@@ -196,19 +198,34 @@ const handleStopRecordRequest = async (jsonMessage) => {
 
 const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) => {
   console.log('publishProducerRtpStream()');
-  const remoteRtpPort = await getPort();
-  // const remoteRtcpPort = await getPort();
-  peer.remotePorts.push(remoteRtpPort);
-  // peer.remotePorts.push(remoteRtcpPort);
 
   // Create the mediasoup RTP Transport used to send media to the GStreamer process
-  const rtpTransport = await createTransport('plain', router, config.plainRtpTransport);
+  const rtpTransportConfig = config.plainRtpTransport;
+
+  // If the process is set to GStreamer set rtcpMux to false
+  if (PROCESS_NAME === 'GStreamer') {
+    rtpTransportConfig.rtcpMux = false;
+  }
+
+  const rtpTransport = await createTransport('plain', router, rtpTransportConfig);
+
+  // Set the receiver RTP ports
+  const remoteRtpPort = await getPort();
+  peer.remotePorts.push(remoteRtpPort);
+
+  let remoteRtcpPort;
+  // If rtpTransport rtcpMux is false also set the receiver RTCP ports
+  if (!rtpTransportConfig.rtcpMux) {
+    remoteRtcpPort = await getPort();
+    peer.remotePorts.push(remoteRtcpPort);
+  }
+
 
   // Connect the mediasoup RTP transport to the ports used by GStreamer
   await rtpTransport.connect({
     ip: '127.0.0.1',
     port: remoteRtpPort,
-    // rtcpPort: remoteRtcpPort
+    rtcpPort: remoteRtcpPort
   });
 
   peer.addTransport(rtpTransport);
@@ -237,25 +254,22 @@ const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) =
 
   return {
     remoteRtpPort,
-    // remoteRtcpPort,
-    // localRtcpPort: rtpTransport.rtcpTuple.localPort,
+    remoteRtcpPort,
+    localRtcpPort: rtpTransport.rtcpTuple ? rtpTransport.rtcpTuple.localPort : undefined,
     rtpCapabilities
   };
 };
 
 const startRecord = async (peer) => {
-  let gstreamerInfo = {};
+  let recordInfo = {};
 
   for (const producer of peer.producers) {
-    gstreamerInfo[producer.kind] = await publishProducerRtpStream(peer, producer);
+    recordInfo[producer.kind] = await publishProducerRtpStream(peer, producer);
   }
 
-  gstreamerInfo.fileName = Date.now().toString();
+  recordInfo.fileName = Date.now().toString();
 
-  console.log(gstreamerInfo);
-
-  // peer.process = new GStreamer(gstreamerInfo);
-  peer.process = new FFmpeg(gstreamerInfo);
+  peer.process = getProcess(recordInfo);
 
   setTimeout(async () => {
     for (const consumer of peer.consumers) {
@@ -266,13 +280,25 @@ const startRecord = async (peer) => {
   }, 1000);
 };
 
+// Returns process command to use (GStreamer/FFmpeg) default is FFmpeg
+const getProcess = (recordInfo) => {
+  switch (PROCESS_NAME) {
+    case 'GStreamer':
+      return new GStreamer(recordInfo);
+    case 'FFmpeg':
+    default:    
+      return new FFmpeg(recordInfo);
+  }
+};
+
 (async () => {
   try {
+    console.log('starting server [processName:%s]', PROCESS_NAME);
     await initializeWorkers();
     router = await createRouter();
 
-    httpsServer.listen(3000, () =>
-      console.log('Socket Server listening on port 3000')
+    httpsServer.listen(SERVER_PORT, () =>
+      console.log('Socket Server listening on port %d', SERVER_PORT)
     );
   } catch (error) {
     console.error('Failed to initialize application [error:%o] destroying in 2 seconds...', error);
