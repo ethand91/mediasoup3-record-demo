@@ -1,4 +1,4 @@
-# Simple video/audio Record Demo Using mediasoup 3 and GStreamer
+# Simple video/audio Record Demo Using mediasoup 3 and GStreamer/FFmpeg
 
 ---
 
