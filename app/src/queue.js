@@ -13,6 +13,6 @@ module.exports = class SocketQueue {
   }
 
   remove (action) {
-    this.queue.remove(action);
+    this.queue.delete(action);
   }
 }
