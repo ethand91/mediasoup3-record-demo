@@ -10,9 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "mediasoup": "^3.3.5",
+    "mediasoup": "^3.4.8",
     "shelljs": "^0.8.3",
-    "uuid": "^3.3.3",
-    "ws": "^7.2.0"
+    "uuid": "^3.4.0",
+    "ws": "^7.2.1"
   }
 }
