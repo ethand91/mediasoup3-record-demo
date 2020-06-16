@@ -257,7 +257,7 @@ const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) =
     remoteRtcpPort,
     localRtcpPort: rtpTransport.rtcpTuple ? rtpTransport.rtcpTuple.localPort : undefined,
     rtpCapabilities,
-    rtpParameters: producer.rtpParameters
+    rtpParameters: rtpConsumer.rtpParameters
   };
 };
 

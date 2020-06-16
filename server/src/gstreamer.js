@@ -4,6 +4,8 @@ const child_process = require('child_process');
 const { EventEmitter } = require('events');
 const shell = require('shelljs');
 
+const { getCodecInfoFromRtpParameters } = require('./utils');
+
 const RECORD_FILE_LOCATION_PATH = process.env.RECORD_FILE_LOCATION_PATH || './files';
 
 const GSTREAMER_DEBUG_LEVEL = process.env.GSTREAMER_DEBUG_LEVEL || 3;
@@ -79,7 +81,10 @@ module.exports = class GStreamer {
 
   get _videoArgs () {
     const { video } = this._rtpParameters;
-    const VIDEO_CAPS = `application/x-rtp,media=(string)video,clock-rate=(int)90000,payload=(int)101,encoding-name=(string)VP8,ssrc=(uint)${video.rtpParameters.encodings[0].ssrc}`;
+    // Get video codec info
+    const videoCodecInfo = getCodecInfoFromRtpParameters('video', video.rtpParameters);
+
+    const VIDEO_CAPS = `application/x-rtp,media=(string)video,clock-rate=(int)${videoCodecInfo.clockRate},payload=(int)${videoCodecInfo.payloadType},encoding-name=(string)${videoCodecInfo.codecName.toUpperCase()},ssrc=(uint)${video.rtpParameters.encodings[0].ssrc}`;
 
     return [
       `udpsrc port=${video.remoteRtpPort} caps="${VIDEO_CAPS}"`,
@@ -96,7 +101,10 @@ module.exports = class GStreamer {
 
   get _audioArgs() {
     const { audio } = this._rtpParameters;
-    const AUDIO_CAPS = `application/x-rtp,media=(string)audio,clock-rate=(int)48000,payload=(int)100,encoding-name=(string)OPUS,ssrc=(uint)${audio.rtpParameters.encodings[0].ssrc}`;
+    // Get audio codec info
+    const audioCodecInfo = getCodecInfoFromRtpParameters('audio', audio.rtpParameters);
+
+    const AUDIO_CAPS = `application/x-rtp,media=(string)audio,clock-rate=(int)${audioCodecInfo.clockRate},payload=(int)${audioCodecInfo.payloadType},encoding-name=(string)${audioCodecInfo.codecName.toUpperCase()},ssrc=(uint)${audio.rtpParameters.encodings[0].ssrc}`;
 
     return [
       `udpsrc port=${audio.remoteRtpPort} caps="${AUDIO_CAPS}"`,
