@@ -80,6 +80,5 @@ https://localhost:8080
 - video/audio only recording
 - FFmpeg Sample (Done)
 - Multiple formats (mp4/avi etc)
-- Multiple Codec support (VP9/VP8/H264)
-- Option to play the recorded file using RTP Producer after recording   
+- Option to play the recorded file using RTP Producer after recording
 - Docker support

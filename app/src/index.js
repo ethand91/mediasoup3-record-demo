@@ -4,6 +4,8 @@ const { GUM } = require('./gum');
 const Peer = require('./peer');
 const SocketQueue = require('./queue');
 
+const mediasoupConfig = require('../../server/src/config');
+
 let peer;
 const queue = new SocketQueue();
 
@@ -27,6 +29,28 @@ const handleSocketClose = () => {
   document.getElementById('startRecordButton').disabled = true;
   document.getElementById('stopRecordButton').disabled = true;
 };
+
+const getVideoCodecs = () => {
+  let params = new URLSearchParams(location.search.slice(1));
+  let videoCodec = params.get('videocodec')
+  const codec = mediasoupConfig.router.mediaCodecs.find(c=>{
+    if (!videocodec)
+      return undefined;
+
+    return ~c.mimeType.toLowerCase().indexOf(videoCodec.toLowerCase())
+  });
+  return codec !== undefined ? codec : {
+                                        kind: 'video',
+                                        mimeType: 'video/H264',
+                                        clockRate: 90000,
+                                        parameters: {
+                                          'packetization-mode': 1,
+                                          'profile-level-id': '4d0032',
+                                          'level-asymmetry-allowed': 1,
+                                          'x-google-start-bitrate': 1000
+                                        }
+                                      };
+}
 
 const handleSocketError = error => {
   console.error('handleSocketError() [error:%o]', error);
@@ -120,7 +144,10 @@ const getMediaStream = async () => {
 
   // If there is a video track start sending it to the server
   if (videoTrack) {
-    const videoProducer = await peer.sendTransport.produce({ track: videoTrack });
+
+    console.log(`getVideoCodecs():`, getVideoCodecs())
+
+    const videoProducer = await peer.sendTransport.produce({ track: videoTrack, codec: getVideoCodecs() });
     peer.producers.push(videoProducer);
   }
 
@@ -178,7 +205,7 @@ const handleTransportConnectEvent = ({ dtlsParameters }, callback, errback) => {
     socket.send(JSON.stringify({
       action: 'connect-transport',
       sessionId: peer.sessionId,
-      transportId: peer.sendTransport.id, 
+      transportId: peer.sendTransport.id,
       dtlsParameters
     }));
   } catch (error) {

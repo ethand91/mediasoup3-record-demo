@@ -45,6 +45,8 @@ wss.on('connection', async (socket, request) => {
       sessionId: peer.sessionId
     });
 
+    console.log('router.rtpCapabilities:', router.rtpCapabilities)
+
     socket.send(message);
   } catch (error) {
     console.error('Failed to create new peer [error:%o]', error);
@@ -70,7 +72,7 @@ wss.on('connection', async (socket, request) => {
 
   socket.once('close', () => {
     console.log('socket::close [sessionId:%s]', socket.sessionId);
-    
+
     const peer = peers.get(socket.sessionId);
 
     if (peer && peer.process) {
@@ -233,7 +235,7 @@ const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) =
   const codecs = [];
   // Codec passed to the RTP Consumer must match the codec in the Mediasoup router rtpCapabilities
   const routerCodec = router.rtpCapabilities.codecs.find(
-    codec => codec.kind === producer.kind 
+    codec => codec.kind === producer.kind
   );
   codecs.push(routerCodec);
 
@@ -247,7 +249,7 @@ const publishProducerRtpStream = async (peer, producer, ffmpegRtpCapabilities) =
   const rtpConsumer = await rtpTransport.consume({
     producerId: producer.id,
     rtpCapabilities,
-    paused: true 
+    paused: true
   });
 
   peer.consumers.push(rtpConsumer);
@@ -287,7 +289,7 @@ const getProcess = (recordInfo) => {
     case 'GStreamer':
       return new GStreamer(recordInfo);
     case 'FFmpeg':
-    default:    
+    default:
       return new FFmpeg(recordInfo);
   }
 };

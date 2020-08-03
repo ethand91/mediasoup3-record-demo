@@ -32,6 +32,8 @@ module.exports.createRouter = async () => {
 
   console.log('createRouter() creating new router [worker.pid:%d]', worker.pid);
 
+  console.log(`config.router.mediaCodecs:${JSON.stringify(config.router.mediaCodecs)}`)
+
   return await worker.createRouter({ mediaCodecs: config.router.mediaCodecs });
 };
 
@@ -40,7 +42,7 @@ module.exports.createTransport = async (transportType, router, options) => {
 
   switch (transportType) {
     case 'webRtc':
-      return await router.createWebRtcTransport(config.webRtcTransport); 
+      return await router.createWebRtcTransport(config.webRtcTransport);
     case 'plain':
       return await router.createPlainRtpTransport(config.plainRtpTransport);
   }
