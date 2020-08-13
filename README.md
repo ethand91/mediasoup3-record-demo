@@ -60,7 +60,7 @@ npm run dev
 ```
 
 ### Access the sample page
-https://localhost:8080/dist
+https://localhost:8080
 
 
 ---

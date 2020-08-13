@@ -8,5 +8,8 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     libraryTarget: 'var',
     library: 'Lib'
+  },
+  devServer: {
+  	contentBase: path.join(__dirname, 'dist')
   }
 };
