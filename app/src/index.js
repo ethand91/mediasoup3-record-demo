@@ -34,7 +34,7 @@ const getVideoCodecs = () => {
   let params = new URLSearchParams(location.search.slice(1));
   let videoCodec = params.get('videocodec')
   const codec = mediasoupConfig.router.mediaCodecs.find(c=>{
-    if (!videocodec)
+    if (!videoCodec)
       return undefined;
 
     return ~c.mimeType.toLowerCase().indexOf(videoCodec.toLowerCase())
