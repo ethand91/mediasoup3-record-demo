@@ -65,6 +65,8 @@ npm run dev
 https://localhost:8080
 
 
+By default recorded videos will be available in `server/files` directory.
+
 ---
 
 ## Server ENV Options
