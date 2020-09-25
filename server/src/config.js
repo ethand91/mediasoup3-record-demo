@@ -53,14 +53,14 @@ module.exports = Object.freeze({
     ]
   },
   webRtcTransport: {
-    listenIps: [ { ip: '192.168.60.99', announcedIp: undefined } ],
+    listenIps: [ { ip: '0.0.0.0', announcedIp: undefined } ], // TODO: Change announcedIp to your external IP or domain name
     enableUdp: true,
     enableTcp: true,
     preferUdp: true,
     maxIncomingBitrate: 1500000
   },
   plainRtpTransport: {
-    listenIp: '127.0.0.1',
+    listenIp: { ip: '0.0.0.0', announcedIp: undefined }, // TODO: Change announcedIp to your external IP or domain name
     rtcpMux: true,
     comedia: false
   }

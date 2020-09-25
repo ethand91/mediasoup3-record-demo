@@ -36,11 +36,13 @@ cd server && npm i
 cd app && npm i
 ```
 
+### Configure the server
+
+Change the announced IP in src/config.js to your local ip (config -> webRtcTransport -> listenIps)
+
 ### Start the server
 
 ```bash
-# Change the listen IP in src/config.js to your local ip (config -> webRtcTransport -> listenIps)
-# Create [files] directory in order for the files to be saved
 # The server uses FFmpeg as default
 cd server && node src/server
 
@@ -62,6 +64,8 @@ npm run dev
 ### Access the sample page
 https://localhost:8080
 
+
+By default recorded videos will be available in `server/files` directory.
 
 ---
 
