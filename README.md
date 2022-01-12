@@ -87,3 +87,9 @@ By default recorded videos will be available in `server/files` directory.
 - Multiple formats (mp4/avi etc)
 - Option to play the recorded file using RTP Producer after recording
 - Docker support
+
+---
+
+Like my work? Any support is appreciated.
+
+<a href="https://www.buymeacoffee.com/ethand9999" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
