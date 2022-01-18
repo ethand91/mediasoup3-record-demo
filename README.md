@@ -83,9 +83,7 @@ By default recorded videos will be available in `server/files` directory.
 ## TODO
 
 - video/audio only recording
-- FFmpeg Sample (Done)
 - Multiple formats (mp4/avi etc)
-- Option to play the recorded file using RTP Producer after recording
 - Docker support
 
 ---

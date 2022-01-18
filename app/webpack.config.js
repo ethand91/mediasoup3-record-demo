@@ -9,7 +9,12 @@ module.exports = {
     libraryTarget: 'var',
     library: 'Lib'
   },
+  resolve: {
+    fallback: {
+      "os": require.resolve("os-browserify/browser")
+    }
+  },
   devServer: {
-  	contentBase: path.join(__dirname, 'dist')
+  	static: path.join(__dirname, 'dist')
   }
 };
