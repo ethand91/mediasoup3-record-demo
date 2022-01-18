@@ -4,15 +4,16 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
+    "start": "node src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "mediasoup": "^3.4.8",
-    "shelljs": "^0.8.3",
-    "uuid": "^3.4.0",
-    "ws": "^7.2.1"
+    "mediasoup": "^3.9.5",
+    "shelljs": "^0.8.5",
+    "uuid": "^8.3.2",
+    "ws": "^8.4.2"
   }
 }

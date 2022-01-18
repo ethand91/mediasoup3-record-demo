@@ -1,7 +1,7 @@
 const fs = require('fs');
 const https = require('https');
 const WebSocket = require('ws');
-const uuidv1 = require('uuid/v1');
+const { v1: uuidv1 } = require('uuid');
 
 const config = require('./config');
 const FFmpeg = require('./ffmpeg');
@@ -279,6 +279,7 @@ const startRecord = async (peer) => {
       // Sometimes the consumer gets resumed before the GStreamer process has fully started
       // so wait a couple of seconds
       await consumer.resume();
+      await consumer.requestKeyFrame();
     }
   }, 1000);
 };
