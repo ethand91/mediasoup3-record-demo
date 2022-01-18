@@ -85,8 +85,10 @@ module.exports = class FFmpeg {
     commandArgs = commandArgs.concat(this._audioArgs);
 
     commandArgs = commandArgs.concat([
+      /*
       '-flags',
       '+global_header',
+      */
       `${RECORD_FILE_LOCATION_PATH}/${this._rtpParameters.fileName}.webm`
     ]);
 

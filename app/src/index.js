@@ -31,25 +31,26 @@ const handleSocketClose = () => {
 };
 
 const getVideoCodecs = () => {
-  let params = new URLSearchParams(location.search.slice(1));
-  let videoCodec = params.get('videocodec')
+  const params = new URLSearchParams(location.search.slice(1));
+  const videoCodec = params.get('videocodec')
+  console.warn('videoCodec');
+
   const codec = mediasoupConfig.router.mediaCodecs.find(c=>{
     if (!videoCodec)
       return undefined;
 
     return ~c.mimeType.toLowerCase().indexOf(videoCodec.toLowerCase())
   });
-  return codec !== undefined ? codec : {
-                                        kind: 'video',
-                                        mimeType: 'video/H264',
-                                        clockRate: 90000,
-                                        parameters: {
-                                          'packetization-mode': 1,
-                                          'profile-level-id': '4d0032',
-                                          'level-asymmetry-allowed': 1,
-                                          'x-google-start-bitrate': 1000
-                                        }
-                                      };
+
+  console.warn('codec', codec);
+  return codec ? codec : {
+    kind: 'video',
+    mimeType: 'video/VP8',
+    clockRate: 90000,
+    parameters: {
+      'x-google-start-bitrate': 1000
+    }
+  };
 }
 
 const handleSocketError = error => {
@@ -144,10 +145,7 @@ const getMediaStream = async () => {
 
   // If there is a video track start sending it to the server
   if (videoTrack) {
-
-    console.log(`getVideoCodecs():`, getVideoCodecs())
-
-    const videoProducer = await peer.sendTransport.produce({ track: videoTrack, codec: getVideoCodecs() });
+    const videoProducer = await peer.sendTransport.produce({ track: videoTrack });
     peer.producers.push(videoProducer);
   }
 

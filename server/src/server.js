@@ -279,6 +279,7 @@ const startRecord = async (peer) => {
       // Sometimes the consumer gets resumed before the GStreamer process has fully started
       // so wait a couple of seconds
       await consumer.resume();
+      await consumer.requestKeyFrame();
     }
   }, 1000);
 };
