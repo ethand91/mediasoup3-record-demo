@@ -102,6 +102,7 @@ const handleJsonMessage = async (jsonMessage) => {
 
 const handleCreateTransportRequest = async (jsonMessage) => {
   const transport = await createTransport('webRtc', router);
+  transport.dtlsParameters.role = 'client';
 
   const peer = peers.get(jsonMessage.sessionId);
   peer.addTransport(transport);
